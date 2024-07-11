@@ -1,20 +1,20 @@
 import type { AppProps } from "next/app";
 
 // components
-import Head from 'components/Common/Head';
+import Head from 'components/meta-data/Head';
 
 // styles
 import "styles/global.css";
 
-import { getProjectConfig } from "services/getProjectConfig";
+import { getConfig } from "lib/config";
 
 function MyApp({ Component, pageProps }: AppProps) {
-  const config = getProjectConfig();
+  const config = getConfig();
 
   return (
     <>
       <Head
-        title={config.displayName}
+        title={config.name}
         description={config.description}
       />
       <Component {...pageProps} />

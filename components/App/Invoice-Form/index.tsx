@@ -1,222 +1,225 @@
-import { PropsWithChildren, useMemo } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
-import { twMerge } from "tailwind-merge";
-import { format } from "date-fns";
+import dynamic from "next/dynamic";
 
-import InvoiceItems from "components/App/Invoice-Form/items";
-import { Icon } from "components/Common/icons";
-import Button from "components/Common/Button";
-import Input from "components/Common/Input";
-import Label from "components/Common/Label";
+import { PropsWithChildren, useMemo, useState } from "react";
 
-import { calculateInvoiceItems, calculateVatTotal } from "services/invoice-calculate";
+import { FieldError, UseFormRegister, useForm } from "react-hook-form";
+import { pdf } from "@react-pdf/renderer";
+import { twJoin } from "tailwind-merge";
+import { addDays } from "date-fns";
+
+import "react-tooltip/dist/react-tooltip.css";
+
+import { InvoiceFormData } from "types/invoice";
+
+import {
+  calculateVatTotal,
+  calculateInvoiceItems,
+} from "lib/invoice/calculate";
+
+import { Icon } from "components/ui/icons";
+import Button from "components/ui/Button";
+import Label from "components/ui/Label";
+import Input from "components/ui/Input";
+
+import { DueDatePicker, NET_30 } from "components/App/Invoice-Form/DueDatePicker";
+import { FormTextArea } from "components/App/Invoice-Form/FormTextArea";
+import { AttachLogo } from "components/App/Invoice-Form/AttachLogo";
+import InvoiceItemList from "components/App/Invoice-Form/ItemList";
+import { Sidebar } from "components/App/Invoice-Form/Sidebar";
+import { Summary } from "components/App/Invoice-Form/Summary";
+
 import { useInvoiceItems } from "components/hooks/invoice-form-items";
-import { InvoiceFormData } from "services/types";
 
+import { PDFDocument } from "components/App/Invoice-Form/PDF";
+import { downloadBlob, getDataURL } from "lib/file";
+import { formatDate } from "lib/invoice/format";
 
 type FormSectionProps = {
   row?: boolean;
 };
 
 const FormSection: React.FC<PropsWithChildren<FormSectionProps>> = (props) => {
-  return (
-    <div
-      className={
-        twMerge(
-          "flex",
-          props.row ? "flex-row" : "flex-col",
-          "justify-between mt-10 last:mb-10"
-        )
-      }
-    >
-      {props.children}
-    </div>
+  const className = twJoin(
+    "flex",
+    props.row ? "flex-row" : "flex-col",
+    "justify-between mt-10 last:mb-10"
   );
+
+  return <div className={className}>{props.children}</div>;
 };
 
+type InvoiceNumberInputProps = {
+  error?: FieldError;
+  register: UseFormRegister<InvoiceFormData>;
+};
 
-function Header() {
-  const currentDate = format(new Date(), "MMMM do yyyy");
+function InvoiceNumberInput(props: InvoiceNumberInputProps) {
+  const { error, register } = props;
+
+  const formRegister = register("number", {
+    required: "please provide a invoice number",
+  });
+
+  const InputClassName = twJoin(
+    "rounded-l-none rounded-r-md text-lg border-transparent placeholder:text-gray-500/50 placeholder:italic placeholder:capitalize",
+    error
+      ? "!border-red-400 ring-2 ring-red-600 ring-offset-1 focus:ring-2 focus:ring-red-600 focus:ring-offset-1"
+      : "focus:ring-2 focus:ring-blue-600 focus:ring-offset-1"
+  );
 
   return (
-    <>
-      <div className="flex flex-col">
-        <Label required>invoice number</Label>
-        <div className="flex flex-row border border-gray-400 rounded-md mt-2">
-          <div className="bg-gray-300 border-r border-r-gray-400 text-gray-500 p-4 rounded-l text-md">
-            <Icon as="HashTag" />
-          </div>
-          <Input
-            type="text"
-            placeholder="invoice number"
-            className="rounded-l-none rounded-r-md text-lg border-transparent focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 placeholder:capitalize"
-          />
+    <div className="flex flex-col mb-4">
+      {/* <Label required>invoice number</Label> */}
+      <div className="flex flex-row border border-gray-400 rounded-md mb-2 pt-0">
+        <div className="bg-gray-300 border-r border-r-gray-400 text-gray-500 p-4 rounded-l text-md">
+          <Icon as="HashTag" />
         </div>
+        <Input
+          type="text"
+          placeholder="invoice number"
+          className={InputClassName}
+          {...formRegister}
+        />
       </div>
-      <p className="text-black text-lg">{currentDate}</p>
-    </>
-  );
-}
-
-function DueDate() {
-  return (
-    <div className="flex flex-col justify-start">
-      <p>Due Date</p>
-      <Button
-        leftIcon="Calendar"
-        className="flex flex-row text-gray-500 px-0 hover:underline items-start"
-      >
-        select due date
-      </Button>
+      <p className="text-red-600 first-letter:capitalize">{error?.message}</p>
     </div>
   );
 }
 
+type FooterProps = {
+  register: UseFormRegister<InvoiceFormData>;
+};
 
-function AttachLogo() {
-  return (
-    <div className="flex flex-col items-start">
-      <Button className="bg-white border border-gray-300 h-32 w-80 flex justify-center text-2xl text-gray-400">
-        <Icon as="Plus" />
-      </Button>
-      <p className="capitalize text-sm italic text-gray-400 pt-1">
-        attach your company logo
-      </p>
-    </div>
-  );
-}
-
-
-type SummaryProps = {
-  vatTotal: number;
-  subtotal: number;
-  total: number;
-  vat: number;
-}
-
-function Summary(props: SummaryProps) {
-  const { subtotal, total, vat, vatTotal } = props;
-
-  return (
-    <div className="flex flex-col items-end">
-      <span className="flex flex-row items-center mt-4 text-lg">
-        <p className="text-md text-black capitalize mr-8">subtotal</p>
-        <p className="text-md text-black capitalize">${subtotal.toFixed(2)}</p>
-      </span>
-      <span className="flex flex-row items-center mt-4 text-lg">
-        <p className="text-md text-black uppercase mr-8">
-          vat %{vatTotal.toFixed(2)}
-        </p>
-        <p className="text-md text-black capitalize">${vat.toFixed(2)}</p>
-      </span>
-      <span className="flex flex-row items-center mt-4 text-lg">
-        <p className="text-md text-black capitalize mr-8">total</p>
-        <p className="text-md text-black capitalize">${total.toFixed(2)}</p>
-      </span>
-    </div>
-  );
-}
-
-function Footer() {
+function Footer(props: FooterProps) {
+  const { register } = props;
   const fields = [
-    { label: "back account", field: "back-account" },
-    { label: "BIC/Swift", field: "bic-swift" },
-    { label: "reference", field: "reference" },
-    { label: "business ID", field: "business-id" },
+    { label: "back account", name: "paymentFields.back_account" },
+    { label: "BIC/Swift", name: "paymentFields.bic_swift" },
+    { label: "reference", name: "paymentFields.reference" },
+    { label: "business ID", name: "paymentFields.business_id" },
   ];
 
-  const formFields = fields.map((item) => (
-    <span key={item.label} className="w-full flex flex-col items-start mt-4 text-lg">
-      <p className="text-md text-black capitalize mb-1">{item.label}</p>
-      <Input name={item.field} type="text" className="w-full" />
+  const formFields = fields.map((field) => (
+    <span
+      key={field.label}
+      className="w-full flex flex-col items-start mt-4 text-lg"
+    >
+      <Label className="text-md text-black capitalize mb-1">
+        {field.label}
+      </Label>
+      <Input
+        type="text"
+        className="w-full"
+        {...register(field.name as keyof InvoiceFormData)}
+      />
     </span>
   ));
 
   return (
-    <div className="grid grid-rows-2 grid-flow-col gap-4">
-      {formFields}
-    </div>
+    <div className="grid grid-rows-2 grid-flow-col gap-4">{formFields}</div>
   );
 }
 
-
-type FormTextAreaProps = {
-  name: string;
-  required?: boolean;
-  optional?: boolean;
-  className?: string;
-  placeholder: string;
-};
-
-const FormTextArea: React.FC<FormTextAreaProps> = (props) => {
-  const { name, required, optional, className, placeholder } = props;
-
-  return (
-    <div className={twMerge("flex flex-col items-start w-full", className)}>
-      <Label required={required} optional={optional}>
-        {name}
-      </Label>
-      <textarea
-        className="resize-none border border-gray-400 rounded h-32 capitalize w-full placeholder:text-gray-500/50"
-        placeholder={placeholder}
-      />
-    </div>
-  );
-}
-
-type InvoiceFormProps = {
-  onHandleSubmit: SubmitHandler<InvoiceFormData>;
-};
-
-export default function InvoiceForm(props: InvoiceFormProps) {
-  const { items, addItem, removeItem, updateItem } = useInvoiceItems();
+function InvoiceForm() {
   const {
-    // register,
+    control,
+    register,
     handleSubmit,
-    // formState: { errors },
-  } = useForm<InvoiceFormData>();
+    formState: { errors },
+  } = useForm<InvoiceFormData>({
+    defaultValues: {
+      due_date: addDays(new Date(), NET_30),
+      issued_date: new Date(),
+    },
+  });
 
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const { items, addItem, removeItem, updateItem } = useInvoiceItems();
+
+  // The total of the invoice including the VAT
   const calculation = useMemo(() => {
     return calculateInvoiceItems(items);
   }, [items]);
 
+  // The total amount of the invoice items VAT
   const vatTotal = useMemo(() => {
     return calculateVatTotal(items);
   }, [items]);
 
+  // handle on submit
+  async function onHandleSubmit(data: InvoiceFormData) {
+    const file = data.logo?.item(0);
+    const invoice = {
+      ...data,
+      items: items.length ? items : [],
+      logo: file ? await getDataURL(file) : ""
+    }
+
+    const InvoicePDF = (
+      <PDFDocument
+        invoice={invoice}
+      />
+    );
+
+    pdf(InvoicePDF).toBlob().then(blob => {
+      downloadBlob(data.number,  blob);
+    });
+  }
+
+  const resolveError = (name, errors) => {
+    return errors[name];
+  };
+
+  const currentDate = formatDate(new Date());
+
   return (
-    <div className="h-full w-2/3 bg-red-white border border-gray-200 rounded-md shadow-md px-10 mr-4">
-      <form onSubmit={handleSubmit(props.onHandleSubmit)}>
+    <form
+      className="flex flex-col justify-end lg:flex-row"
+      onSubmit={handleSubmit(onHandleSubmit)}
+    >
+      <div className="h-full w-2/3 bg-red-white border border-gray-200 rounded-md shadow-md px-10 mr-4">
         <FormSection row>
-          <Header />
-        </FormSection>
-        <FormSection row>
-          <DueDate />
-          <AttachLogo />
+          <AttachLogo register={register} />
+          <div className="flex flex-col items-start">
+            <InvoiceNumberInput
+              error={resolveError("number", errors)}
+              register={register}
+            />
+            <p className="text-black text-lg font-semibold mb-6">
+              {currentDate}
+            </p>
+            <DueDatePicker control={control} />
+          </div>
         </FormSection>
         <FormSection row>
           <FormTextArea
-            name="sender"
             required
+            name="sender_contact"
             placeholder={`your company name\naddress\ncontact details (email, phone number)`}
             className="mr-12"
+            register={register}
+            error={resolveError("sender_contact", errors)}
           />
           <FormTextArea
-            name="recipient"
             required
+            name="recipient_contact"
             placeholder={`recipient company name\naddress\ncontact details (email, phone number)`}
+            register={register}
+            error={resolveError("recipient_contact", errors)}
           />
         </FormSection>
         <FormSection>
           <FormTextArea
             optional
             name="notes"
-            className="h-28 w-full"
+            className="h-36 w-full"
             placeholder="Optional: Message to the recipient explaining what is this invoice for"
+            register={register}
           />
         </FormSection>
         <FormSection>
-          <InvoiceItems
+          <InvoiceItemList
             items={items}
             addItem={addItem}
             removeItem={removeItem}
@@ -227,9 +230,23 @@ export default function InvoiceForm(props: InvoiceFormProps) {
           <Summary vatTotal={vatTotal} {...calculation} />
         </FormSection>
         <FormSection>
-          <Footer />
+          <Footer register={register} />
         </FormSection>
-      </form>
-    </div>
+      </div>
+      <Sidebar>
+        <Button
+          type="submit"
+          loading={isGeneratingPDF}
+          rightIcon={isGeneratingPDF ? "Download" : undefined}
+          className="w-full bg-indigo-700 justify-center text-white py-3 px-4 mb-6 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
+        >
+          {isGeneratingPDF ? "generating invoice pdf" : "download invoice"}
+        </Button>
+      </Sidebar>
+    </form>
   );
-};
+}
+
+export default dynamic(() => Promise.resolve(InvoiceForm), {
+  ssr: false,
+});

@@ -2,11 +2,11 @@ import React, { forwardRef, ButtonHTMLAttributes, PropsWithChildren } from "reac
 import { twMerge } from 'tailwind-merge';
 
 // components
-import { Icon, IconType } from "components/Common/icons";
+import { Icon, IconType } from "components/ui/icons";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   PropsWithChildren & {
-    isLoading?: boolean;
+    loading?: boolean;
     leftIcon?: IconType;
     rightIcon?: IconType;
   };
@@ -32,27 +32,22 @@ const loadingSVG = (
 
 
 const Button: React.FC<ButtonProps> = forwardRef<HTMLButtonElement, ButtonProps>((props, ref) => {
-  const { leftIcon, rightIcon, isLoading, type, className, disabled, onClick, children } = props;
+  const { leftIcon, rightIcon, loading, type = 'button', className, disabled, onClick, children } = props;
 
   const buttonLeftIcon = leftIcon ? <Icon className="h-5 w-5 mr-2" as={leftIcon} /> : null;
   const buttonRightIcon = rightIcon ? (
     <Icon className="h-5 w-5 ml-2" as={rightIcon} />
   ) : null;
 
+  const ButtonClassName = twMerge(
+    "flex flex-row items-center h-max w-max p-2 capitalize border border-1 rounded text-md",
+    className,
+    // (loading || disabled) && "opacity-60"
+  );
+
   return (
-    <button
-      ref={ref}
-      type={type}
-      className={
-        twMerge(
-        "flex flex-row items-center h-max w-max p-2 capitalize border border-1 rounded text-md",
-        className,
-        (isLoading || disabled) && "opacity-60"
-        )
-      }
-      onClick={onClick}
-    >
-      {isLoading && loadingSVG}
+    <button ref={ref} type={type} className={ButtonClassName} onClick={onClick} disabled={disabled || loading}>
+      {loading && loadingSVG}
       {buttonLeftIcon}
       {children}
       {buttonRightIcon}

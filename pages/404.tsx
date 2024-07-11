@@ -4,7 +4,7 @@ import { NextPage } from "next";
 import Main from "components/App/Main";
 import Link from "next/link";
 
-const Page: NextPage = (props) => {
+const Page: NextPage = () => {
   return (
     <Main>
       <div className="h-screen flex justify-center items-center">

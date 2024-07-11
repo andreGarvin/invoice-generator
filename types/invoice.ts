@@ -5,22 +5,33 @@ export type InvoiceNumeralFields = {
 }
 
 export type InvoiceItem = InvoiceNumeralFields & {
-  description?: string;
   id: number;
+  description?: string;
 };
 
 type InvoicePaymentFields = {
-  bicSwift: string;
+  bic_swift: string;
   reference: string;
-  businessID: string;
-  backAccount: string;
+  business_id: string;
+  back_account: string;
 }
 
-export type InvoiceFormData = {
-  number: string;
+type InvoiceBase = {
   notes?: string;
+  number: string;
+  due_date?: Date;
+  issued_date: Date;
+  items: InvoiceItem[];
   sender_contact: string;
   recipient_contact: string;
-  items: InvoiceItem[];
   paymentFields: InvoicePaymentFields;
+};
+
+export type Invoice = InvoiceBase & {
+  logo: string;
+};
+
+
+export type InvoiceFormData = InvoiceBase & {
+  logo: FileList;
 };
