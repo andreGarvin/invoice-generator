@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { InvoiceItem } from "services/types";
+
+import { InvoiceItem } from "types/invoice";
 
 export type useInvoiceItemHook = {
   items: InvoiceItem[];
@@ -8,21 +9,22 @@ export type useInvoiceItemHook = {
   updateItem: (id: number, partialItem: Partial<InvoiceItem>) => void;
 };
 
-export const useInvoiceItems = (): useInvoiceItemHook => {
-  const defaultInvoiceItem = {
-    description: "",
-    quantity: 0,
-    price: 0,
-    vat: 0,
-    id: new Date().getTime(),
-  };
+const DEFAULT_INVOICE_ITEM = {
+  id: new Date().getTime(),
+  description: "",
+  quantity: 0,
+  price: 0,
+  vat: 0,
+};
 
-  const [items, setItems] = useState<InvoiceItem[]>([defaultInvoiceItem]);
+export const useInvoiceItems = (): useInvoiceItemHook => {
+
+  const [items, setItems] = useState<InvoiceItem[]>([DEFAULT_INVOICE_ITEM]);
 
   const addItem = () => {
     setItems((items) => [
       ...items,
-      { ...defaultInvoiceItem, id: new Date().getTime(), },
+      { ...DEFAULT_INVOICE_ITEM, id: new Date().getTime(), },
     ]);
   };
 

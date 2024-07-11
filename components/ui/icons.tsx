@@ -1,14 +1,23 @@
-import { FaCalendarAlt, FaHashtag, FaPlus, FaGithub, FaTrashAlt } from "react-icons/fa";
+import {
+  FaPlus,
+  FaGithub,
+  FaHashtag,
+  FaTrashAlt,
+  FaCalendarAlt,
+} from "react-icons/fa";
+import { HiDownload, HiInformationCircle } from "react-icons/hi";
 import { MdOpenInNew } from "react-icons/md";
-import { HiDownload } from "react-icons/hi";
+import { IoMdClose } from "react-icons/io";
 
 const Icons = {
   OpenInNewTab: MdOpenInNew,
+  Info: HiInformationCircle,
   Calendar: FaCalendarAlt,
   Download: HiDownload,
   HashTag: FaHashtag,
   Trash: FaTrashAlt,
   Github: FaGithub,
+  Close: IoMdClose,
   Plus: FaPlus,
 };
 
